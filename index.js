@@ -28,7 +28,7 @@ client.once("clientReady", async () => {
 
 
 // ================= DAILY NEWS =================
-cron.schedule("0 10 * * 1-5", async () => {
+cron.schedule("*/2 * * * *", async () => {
   try {
     const res = await axios.get(
       `https://finnhub.io/api/v1/news?category=general&token=${FINNHUB_API}`
