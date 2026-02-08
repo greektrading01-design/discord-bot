@@ -16,7 +16,9 @@ const ALERT_CHANNEL = process.env.ALERT_CHANNEL_ID;
 
 let watchList = [];
 let indexPointer = 0;
+
 const alertedToday = new Set();
+const sentNews = new Set();
 
 
 // ================= MARKET HOURS FILTER =================
@@ -30,10 +32,10 @@ function isMarketTime() {
   const day = greekTime.getDay();
   const hour = greekTime.getHours();
 
-  // Δευτέρα - Παρασκευή μόνο
+  // μόνο Δευτέρα - Παρασκευή
   if (day === 0 || day === 6) return false;
 
-  // 11:00 -> 03:00 Ελλάδας (premarket + market + after-hours)
+  // 11:00 -> 03:00 Ελλάδας
   if (hour >= 11 || hour < 3) return true;
 
   return false;
@@ -62,7 +64,6 @@ client.once("clientReady", async () => {
       const fromDate = from.toISOString().split("T")[0];
       const toDate = today.toISOString().split("T")[0];
 
-      // 20 τυχαίες εταιρίες κάθε φορά
       const sample = watchList.sort(() => 0.5 - Math.random()).slice(0, 20);
 
       for (const symbol of sample) {
@@ -75,13 +76,16 @@ client.once("clientReady", async () => {
 
         const news = res.data[0];
 
+        // ⬇️ Αποφυγή διπλών ειδήσεων
+        if (sentNews.has(news.url)) continue;
+        sentNews.add(news.url);
+
         await channel.send(
           `📈 **${symbol}**
 **${news.headline}**
 ${news.url}`
         );
 
-        // καθυστέρηση για rate limit
         await new Promise(r => setTimeout(r, 1500));
       }
 
@@ -91,11 +95,19 @@ ${news.url}`
   }
 
 
- // ================= SCHEDULED NEWS (κάθε 3 ώρες) =================
-cron.schedule("0 9,12,15,18,21 * * *", sendCompanyNews, {
-  timezone: "Europe/Athens"
-});
+  // ================= SCHEDULED NEWS =================
+  cron.schedule("0 9,12,15,18,21 * * *", sendCompanyNews, {
+    timezone: "Europe/Athens"
+  });
 
+
+  // ================= DAILY NEWS CACHE RESET =================
+  cron.schedule("0 5 * * *", () => {
+    sentNews.clear();
+    console.log("News cache cleared");
+  }, {
+    timezone: "Europe/Athens"
+  });
 
 
   // ================= WEEKLY EARNINGS =================
