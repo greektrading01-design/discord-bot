@@ -3,8 +3,6 @@ const axios = require("axios");
 const cron = require("node-cron");
 const getAllStocks = require("./stocks");
 
-const alertedToday = new Set();
-
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
@@ -18,6 +16,28 @@ const ALERT_CHANNEL = process.env.ALERT_CHANNEL_ID;
 
 let watchList = [];
 let indexPointer = 0;
+const alertedToday = new Set();
+
+
+// ================= MARKET HOURS FILTER =================
+function isMarketTime() {
+  const now = new Date();
+
+  const greekTime = new Date(
+    now.toLocaleString("en-US", { timeZone: "Europe/Athens" })
+  );
+
+  const day = greekTime.getDay(); // 0=Κυριακή
+  const hour = greekTime.getHours();
+
+  // μόνο Δευτέρα - Παρασκευή
+  if (day === 0 || day === 6) return false;
+
+  // 11:00 -> 03:00 Ελλάδας (premarket + market + afterhours)
+  if (hour >= 11 || hour < 3) return true;
+
+  return false;
+}
 
 
 // ===== BOT READY =====
@@ -29,9 +49,9 @@ client.once("clientReady", async () => {
   console.log("Total US stocks loaded:", watchList.length);
 
 
-
-  // ================= DAILY COMPANY NEWS =================
-  cron.schedule("30 7 * * 1-5", async () => {
+  // ================= DAILY COMPANY NEWS (ΠΡΩΙ) =================
+  // 07:30 UTC = 09:30 Ελλάδα
+  cron.schedule("*/2 * * * *", async () => {
     try {
 
       const channel = await client.channels.fetch(NEWS_CHANNEL);
@@ -43,7 +63,8 @@ client.once("clientReady", async () => {
       const fromDate = from.toISOString().split("T")[0];
       const toDate = today.toISOString().split("T")[0];
 
-      const sample = watchList.sort(() => 0.5 - Math.random()).slice(0, 25);
+      // 20 τυχαίες μετοχές κάθε πρωί
+      const sample = watchList.sort(() => 0.5 - Math.random()).slice(0, 20);
 
       for (const symbol of sample) {
 
@@ -56,14 +77,13 @@ client.once("clientReady", async () => {
         const news = res.data[0];
 
         await channel.send(
-          `📈 **${symbol} News**
+          `📈 **${symbol}**
 **${news.headline}**
-${news.summary || ""}
 ${news.url}`
         );
 
-        // anti-spam delay
-        await new Promise(r => setTimeout(r, 1200));
+        // μικρή καθυστέρηση για να μη φάμε rate limit
+        await new Promise(r => setTimeout(r, 1500));
       }
 
     } catch (err) {
@@ -74,8 +94,10 @@ ${news.url}`
 
 
   // ================= WEEKLY EARNINGS =================
+  // Σάββατο πρωί
   cron.schedule("0 10 * * 6", async () => {
     try {
+
       const today = new Date();
       const nextWeek = new Date(today);
       nextWeek.setDate(today.getDate() + 7);
@@ -91,7 +113,7 @@ ${news.url}`
 
       let message = "📅 **Next Week Earnings**\n\n";
 
-      res.data.earnings.slice(0, 20).forEach(e => {
+      res.data.earnings.slice(0, 25).forEach(e => {
         message += `**${e.symbol}** — ${e.date}\n`;
       });
 
@@ -104,10 +126,11 @@ ${news.url}`
 
 
 
-  // ================= MARKET SCANNER =================
+  // ================= MARKET CRASH SCANNER =================
   setInterval(async () => {
 
     if (!watchList.length) return;
+    if (!isMarketTime()) return;
 
     try {
 
