@@ -19,7 +19,7 @@ let indexPointer = 0;
 
 
 // ===== BOT READY =====
-client.once("ready", async () => {
+client.once("clientReady", async () => {
   console.log(`Bot Ready: ${client.user.tag}`);
 
   watchList = await getAllStocks();
