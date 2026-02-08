@@ -93,17 +93,17 @@ ${news.url}`
 
   // ================= SCHEDULED NEWS =================
   // 09:00 Ελλάδα
-  cron.schedule("0 9 * * 1-5", sendCompanyNews, {
+  cron.schedule("0 9 * * *", sendCompanyNews, {
     timezone: "Europe/Athens"
   });
 
   // 14:00 Ελλάδα
-  cron.schedule("0 14 * * 1-5", sendCompanyNews, {
+  cron.schedule("0 14 * * *", sendCompanyNews, {
     timezone: "Europe/Athens"
   });
 
   // 19:00 Ελλάδα
-  cron.schedule("0 19 * * 1-5", sendCompanyNews, {
+  cron.schedule("0 19 * * *", sendCompanyNews, {
     timezone: "Europe/Athens"
   });
 
@@ -187,5 +187,9 @@ Previous Close: $${prevClose}`
   }, 60000);
 
 });
+if (!TOKEN) {
+  console.error("TOKEN NOT FOUND IN ENV VARIABLES");
+  process.exit(1);
+}
 
 client.login(TOKEN);
