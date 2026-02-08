@@ -17,6 +17,8 @@ const ALERT_CHANNEL = process.env.ALERT_CHANNEL_ID;
 let watchList = [];
 let indexPointer = 0;
 const alertedToday = new Set();
+let schedulerStarted = false;
+
 
 
 // ================= MARKET HOURS FILTER =================
@@ -41,9 +43,14 @@ function isMarketTime() {
 
 
 // ===== BOT READY =====
-client.once("clientReady", async () => {
+client.once("ready", async () => {
 
   console.log(`Bot Ready: ${client.user.tag}`);
+// μην ξεκινάς 2 φορές τα cron
+if (schedulerStarted) return;
+schedulerStarted = true;
+
+console.log("Starting schedulers...");
 
   watchList = await getAllStocks();
   console.log("Total US stocks loaded:", watchList.length);
@@ -103,7 +110,7 @@ ${news.url}`
   });
 
   // 19:00 Ελλάδα
-  cron.schedule("11 19 * * *", sendCompanyNews, {
+  cron.schedule("/1 * * * *", sendCompanyNews, {
     timezone: "Europe/Athens"
   });
 
