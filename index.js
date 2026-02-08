@@ -1,10 +1,18 @@
 const { Client, GatewayIntentBits } = require("discord.js");
 const axios = require("axios");
 const cron = require("node-cron");
+const getAllStocks = require("./stocks");
 
-const client = new Client({
-  intents: [GatewayIntentBits.Guilds]
+
+let watchList = [];
+
+client.once("ready", async () => {
+  console.log(`Bot Ready: ${client.user.tag}`);
+
+  watchList = await getAllStocks();
+  console.log("Total US stocks loaded:", watchList.length);
 });
+
 
 const TOKEN = process.env.TOKEN;
 const FINNHUB_API = process.env.FINNHUB_API;
@@ -75,11 +83,18 @@ const watchList = [
   "AMD","NFLX","INTC","JPM","BAC","KO","PEP"
 ];
 
+let indexPointer = 0;
+
 setInterval(async () => {
+  if (!watchList.length) return;
+
   try {
     const channel = await client.channels.fetch(ALERT_CHANNEL);
 
-    for (const symbol of watchList) {
+    const batchSize = 10; // πόσες μετοχές κάθε λεπτό
+    const batch = watchList.slice(indexPointer, indexPointer + batchSize);
+
+    for (const symbol of batch) {
       const res = await axios.get(
         `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API}`
       );
@@ -87,17 +102,24 @@ setInterval(async () => {
       const price = res.data.c;
       const prevClose = res.data.pc;
 
+      if (!price || !prevClose) continue;
+
       const change = ((price - prevClose) / prevClose) * 100;
 
       if (change <= -7) {
         await channel.send(
-          `🚨 **${symbol} crashed ${change.toFixed(2)}% today!**\nPrice: $${price}`
+          `🚨 **${symbol} dropped ${change.toFixed(2)}% today!**\nPrice: $${price}`
         );
       }
     }
+
+    indexPointer += batchSize;
+    if (indexPointer >= watchList.length) indexPointer = 0;
+
   } catch (err) {
-    console.log("Alert Error:", err.message);
+    console.log("Scanner error:", err.message);
   }
-}, 300000);
+}, 60000);
+
 
 client.login(TOKEN);
