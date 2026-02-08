@@ -109,7 +109,7 @@ client.once("clientReady", async (client) => {
 // ================= SCHEDULED NEWS =================
 // Ελλάδα: 09:00 12:00 15:00 18:00 21:00
 // UTC:    07:00 10:00 13:00 16:00 19:00
-cron.schedule("00 7,10,13,16,18 * * *", sendCompanyNews);
+cron.schedule("00 7,10,13,16,19 * * *", sendCompanyNews);
 
 
 
