@@ -29,26 +29,48 @@ client.once("clientReady", async () => {
 });
 
 
-// ================= DAILY NEWS =================
-cron.schedule("0 10 * * 1-5", async () => {
+// ================= DAILY COMPANY NEWS =================
+cron.schedule("*/2 * * * *", async () => {
   try {
-    const res = await axios.get(
-      `https://finnhub.io/api/v1/news?category=general&token=${FINNHUB_API}`
-    );
 
     const channel = await client.channels.fetch(NEWS_CHANNEL);
 
-    const articles = res.data.slice(0, 5);
+    const today = new Date();
+    const from = new Date(today);
+    from.setDate(today.getDate() - 1);
 
-    for (const news of articles) {
-      await channel.send(
-        `📰 **${news.headline}**\n${news.summary}\n${news.url}`
+    const fromDate = from.toISOString().split("T")[0];
+    const toDate = today.toISOString().split("T")[0];
+
+    // τυχαία 25 μετοχές κάθε μέρα για να μη φάμε rate limit
+    const sample = watchList.sort(() => 0.5 - Math.random()).slice(0, 25);
+
+    for (const symbol of sample) {
+
+      const res = await axios.get(
+        `https://finnhub.io/api/v1/company-news?symbol=${symbol}&from=${fromDate}&to=${toDate}&token=${FINNHUB_API}`
       );
+
+      if (!res.data || !res.data.length) continue;
+
+      const news = res.data[0];
+
+      await channel.send(
+        `📈 **${symbol} News**
+**${news.headline}**
+${news.summary || ""}
+${news.url}`
+      );
+
+      // anti-spam delay (πολύ σημαντικό)
+      await new Promise(r => setTimeout(r, 1200));
     }
+
   } catch (err) {
-    console.log("News Error:", err.message);
+    console.log("Company news error:", err.message);
   }
 });
+
 
 
 // ================= WEEKLY EARNINGS =================
