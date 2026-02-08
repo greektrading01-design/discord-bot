@@ -2,6 +2,8 @@ const { Client, GatewayIntentBits } = require("discord.js");
 const axios = require("axios");
 const cron = require("node-cron");
 const getAllStocks = require("./stocks");
+const alertedToday = new Set();
+
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
@@ -28,7 +30,7 @@ client.once("clientReady", async () => {
 
 
 // ================= DAILY NEWS =================
-cron.schedule("*/2 * * * *", async () => {
+cron.schedule("0 10 * * 1-5", async () => {
   try {
     const res = await axios.get(
       `https://finnhub.io/api/v1/news?category=general&token=${FINNHUB_API}`
@@ -100,13 +102,17 @@ setInterval(async () => {
 
       const change = ((price - prevClose) / prevClose) * 100;
 
-      if (change <= 100) {
+     if (change <= -7 && !alertedToday.has(symbol)) {
+
+  alertedToday.add(symbol);
+
   await channel.send(
-    `🧪 TEST ALERT — ${symbol}
+    `🚨 **${symbol} crashed ${change.toFixed(2)}% today!**
 Price: $${price}
-Change: ${change.toFixed(2)}%`
+Previous Close: $${prevClose}`
   );
 }
+
 
     }
 
