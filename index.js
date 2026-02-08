@@ -3,16 +3,9 @@ const axios = require("axios");
 const cron = require("node-cron");
 const getAllStocks = require("./stocks");
 
-
-let watchList = [];
-
-client.once("ready", async () => {
-  console.log(`Bot Ready: ${client.user.tag}`);
-
-  watchList = await getAllStocks();
-  console.log("Total US stocks loaded:", watchList.length);
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds]
 });
-
 
 const TOKEN = process.env.TOKEN;
 const FINNHUB_API = process.env.FINNHUB_API;
@@ -21,8 +14,16 @@ const NEWS_CHANNEL = process.env.NEWS_CHANNEL_ID;
 const EARNINGS_CHANNEL = process.env.EARNINGS_CHANNEL_ID;
 const ALERT_CHANNEL = process.env.ALERT_CHANNEL_ID;
 
-client.once("ready", () => {
+let watchList = [];
+let indexPointer = 0;
+
+
+// ===== BOT READY =====
+client.once("ready", async () => {
   console.log(`Bot Ready: ${client.user.tag}`);
+
+  watchList = await getAllStocks();
+  console.log("Total US stocks loaded:", watchList.length);
 });
 
 
@@ -77,21 +78,14 @@ cron.schedule("0 10 * * 6", async () => {
 });
 
 
-// ================= PRICE ALERTS =================
-const watchList = [
-  "AAPL","MSFT","NVDA","AMZN","GOOGL","META","TSLA",
-  "AMD","NFLX","INTC","JPM","BAC","KO","PEP"
-];
-
-let indexPointer = 0;
-
+// ================= MARKET SCANNER =================
 setInterval(async () => {
   if (!watchList.length) return;
 
   try {
     const channel = await client.channels.fetch(ALERT_CHANNEL);
 
-    const batchSize = 10; // πόσες μετοχές κάθε λεπτό
+    const batchSize = 10;
     const batch = watchList.slice(indexPointer, indexPointer + batchSize);
 
     for (const symbol of batch) {
