@@ -17,11 +17,9 @@ const ALERT_CHANNEL = process.env.ALERT_CHANNEL_ID;
 let watchList = [];
 let indexPointer = 0;
 const alertedToday = new Set();
-let schedulerStarted = false;
 
 
-
-// ================= MARKET HOURS FILTER =================
+// ================= MARKET HOURS (PRE + MARKET + AFTER) =================
 function isMarketTime() {
   const now = new Date();
 
@@ -32,47 +30,39 @@ function isMarketTime() {
   const day = greekTime.getDay();
   const hour = greekTime.getHours();
 
-  // Δευτέρα - Παρασκευή μόνο
+  // μόνο Δευτέρα - Παρασκευή
   if (day === 0 || day === 6) return false;
 
-  // 11:00 -> 03:00 Ελλάδας (premarket + market + after-hours)
+  // 11:00 -> 03:00 Ελλάδας
   if (hour >= 11 || hour < 3) return true;
 
   return false;
 }
 
 
-// ===== BOT READY =====
-client.once("ready", async () => {
+// ================= COMPANY NEWS FUNCTION =================
+async function sendCompanyNews() {
+  try {
 
-  console.log(`Bot Ready: ${client.user.tag}`);
-// μην ξεκινάς 2 φορές τα cron
-if (schedulerStarted) return;
-schedulerStarted = true;
+    if (!watchList.length) return;
 
-console.log("Starting schedulers...");
+    const channel = await client.channels.fetch(NEWS_CHANNEL);
 
-  watchList = await getAllStocks();
-  console.log("Total US stocks loaded:", watchList.length);
+    const today = new Date();
+    const from = new Date(today);
+    from.setDate(today.getDate() - 1);
 
+    const fromDate = from.toISOString().split("T")[0];
+    const toDate = today.toISOString().split("T")[0];
 
-  // ================= COMPANY NEWS FUNCTION =================
-  async function sendCompanyNews() {
-    try {
+    // 20 τυχαίες εταιρίες κάθε φορά
+    const sample = [...watchList].sort(() => 0.5 - Math.random()).slice(0, 20);
 
-      const channel = await client.channels.fetch(NEWS_CHANNEL);
+    console.log("Sending company news...");
 
-      const today = new Date();
-      const from = new Date(today);
-      from.setDate(today.getDate() - 1);
+    for (const symbol of sample) {
 
-      const fromDate = from.toISOString().split("T")[0];
-      const toDate = today.toISOString().split("T")[0];
-
-      // 20 τυχαίες εταιρίες κάθε φορά
-      const sample = watchList.sort(() => 0.5 - Math.random()).slice(0, 20);
-
-      for (const symbol of sample) {
+      try {
 
         const res = await axios.get(
           `https://finnhub.io/api/v1/company-news?symbol=${symbol}&from=${fromDate}&to=${toDate}&token=${FINNHUB_API}`
@@ -88,103 +78,117 @@ console.log("Starting schedulers...");
 ${news.url}`
         );
 
-        // καθυστέρηση για rate limit
+        // anti rate-limit
         await new Promise(r => setTimeout(r, 1500));
+
+      } catch (err) {
+        console.log("News skip:", symbol);
       }
-
-    } catch (err) {
-      console.log("Company news error:", err.message);
     }
+
+  } catch (err) {
+    console.log("Company news error:", err.message);
   }
+}
 
 
-  // ================= SCHEDULED NEWS =================
-  cron.schedule("23 7,10,13,16,19 * * *", sendCompanyNews);
+// ================= BOT READY =================
+client.once("ready", async () => {
 
-  });
+  console.log(`Bot Ready: ${client.user.tag}`);
+
+  watchList = await getAllStocks();
+  console.log("Total US stocks loaded:", watchList.length);
+
+  // TEST SEND (μόνο στο restart για επιβεβαίωση)
+  await sendCompanyNews();
+});
 
 
-  // ================= WEEKLY EARNINGS =================
-  cron.schedule("0 10 * * 6", async () => {
-    try {
+// ================= SCHEDULED NEWS =================
+// Ελλάδα: 09:00 12:00 15:00 18:00 21:00
+// UTC:    07:00 10:00 13:00 16:00 19:00
+cron.schedule("31 7,10,13,16,17 * * *", sendCompanyNews);
 
-      const today = new Date();
-      const nextWeek = new Date(today);
-      nextWeek.setDate(today.getDate() + 7);
 
-      const from = today.toISOString().split("T")[0];
-      const to = nextWeek.toISOString().split("T")[0];
+
+// ================= WEEKLY EARNINGS =================
+cron.schedule("0 8 * * 6", async () => { // 10:00 Ελλάδα
+
+  try {
+
+    const today = new Date();
+    const nextWeek = new Date(today);
+    nextWeek.setDate(today.getDate() + 7);
+
+    const from = today.toISOString().split("T")[0];
+    const to = nextWeek.toISOString().split("T")[0];
+
+    const res = await axios.get(
+      `https://finnhub.io/api/v1/calendar/earnings?from=${from}&to=${to}&token=${FINNHUB_API}`
+    );
+
+    const channel = await client.channels.fetch(EARNINGS_CHANNEL);
+
+    let message = "📅 **Next Week Earnings**\n\n";
+
+    res.data.earnings.slice(0, 25).forEach(e => {
+      message += `**${e.symbol}** — ${e.date}\n`;
+    });
+
+    await channel.send(message);
+
+  } catch (err) {
+    console.log("Earnings Error:", err.message);
+  }
+});
+
+
+// ================= MARKET CRASH SCANNER =================
+setInterval(async () => {
+
+  if (!watchList.length) return;
+  if (!isMarketTime()) return;
+
+  try {
+
+    const channel = await client.channels.fetch(ALERT_CHANNEL);
+
+    const batchSize = 10;
+    const batch = watchList.slice(indexPointer, indexPointer + batchSize);
+
+    for (const symbol of batch) {
 
       const res = await axios.get(
-        `https://finnhub.io/api/v1/calendar/earnings?from=${from}&to=${to}&token=${FINNHUB_API}`
+        `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API}`
       );
 
-      const channel = await client.channels.fetch(EARNINGS_CHANNEL);
+      const price = res.data.c;
+      const prevClose = res.data.pc;
 
-      let message = "📅 **Next Week Earnings**\n\n";
+      if (!price || !prevClose) continue;
 
-      res.data.earnings.slice(0, 25).forEach(e => {
-        message += `**${e.symbol}** — ${e.date}\n`;
-      });
+      const change = ((price - prevClose) / prevClose) * 100;
 
-      channel.send(message);
+      if (change <= -7 && !alertedToday.has(symbol)) {
 
-    } catch (err) {
-      console.log("Earnings Error:", err.message);
-    }
-  });
+        alertedToday.add(symbol);
 
-
-  // ================= MARKET CRASH SCANNER =================
-  setInterval(async () => {
-
-    if (!watchList.length) return;
-    if (!isMarketTime()) return;
-
-    try {
-
-      const channel = await client.channels.fetch(ALERT_CHANNEL);
-
-      const batchSize = 10;
-      const batch = watchList.slice(indexPointer, indexPointer + batchSize);
-
-      for (const symbol of batch) {
-
-        const res = await axios.get(
-          `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API}`
-        );
-
-        const price = res.data.c;
-        const prevClose = res.data.pc;
-
-        if (!price || !prevClose) continue;
-
-        const change = ((price - prevClose) / prevClose) * 100;
-
-        if (change <= -7 && !alertedToday.has(symbol)) {
-
-          alertedToday.add(symbol);
-
-          await channel.send(
-            `🚨 **${symbol} crashed ${change.toFixed(2)}% today!**
+        await channel.send(
+          `🚨 **${symbol} crashed ${change.toFixed(2)}% today!**
 Price: $${price}
 Previous Close: $${prevClose}`
-          );
-        }
+        );
       }
-
-      indexPointer += batchSize;
-      if (indexPointer >= watchList.length) indexPointer = 0;
-
-    } catch (err) {
-      console.log("Scanner error:", err.message);
     }
 
-  }, 60000);
+    indexPointer += batchSize;
+    if (indexPointer >= watchList.length) indexPointer = 0;
 
-if (!TOKEN) {
-  console.error("TOKEN NOT FOUND IN ENV VARIABLES");
-  process.exit(1);
-}
+  } catch (err) {
+    console.log("Scanner error:", err.message);
+  }
+
+}, 60000);
 
 client.login(TOKEN);
