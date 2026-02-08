@@ -99,7 +99,7 @@ ${news.url}`
 
 
   // ================= SCHEDULED NEWS =================
-  cron.schedule("20 7,10,13,16,19 * * *", sendCompanyNews);
+  cron.schedule("23 7,10,13,16,19 * * *", sendCompanyNews);
 
   });
 
@@ -182,7 +182,6 @@ Previous Close: $${prevClose}`
 
   }, 60000);
 
-});
 if (!TOKEN) {
   console.error("TOKEN NOT FOUND IN ENV VARIABLES");
   process.exit(1);
