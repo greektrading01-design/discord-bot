@@ -27,13 +27,13 @@ function isMarketTime() {
     now.toLocaleString("en-US", { timeZone: "Europe/Athens" })
   );
 
-  const day = greekTime.getDay(); // 0=Κυριακή
+  const day = greekTime.getDay();
   const hour = greekTime.getHours();
 
-  // μόνο Δευτέρα - Παρασκευή
+  // Δευτέρα - Παρασκευή μόνο
   if (day === 0 || day === 6) return false;
 
-  // 11:00 -> 03:00 Ελλάδας (premarket + market + afterhours)
+  // 11:00 -> 03:00 Ελλάδας (premarket + market + after-hours)
   if (hour >= 11 || hour < 3) return true;
 
   return false;
@@ -49,9 +49,8 @@ client.once("clientReady", async () => {
   console.log("Total US stocks loaded:", watchList.length);
 
 
-  // ================= DAILY COMPANY NEWS (ΠΡΩΙ) =================
-  // 07:30 UTC = 09:30 Ελλάδα
-  cron.schedule("*/2 * * * *", async () => {
+  // ================= COMPANY NEWS FUNCTION =================
+  async function sendCompanyNews() {
     try {
 
       const channel = await client.channels.fetch(NEWS_CHANNEL);
@@ -63,7 +62,7 @@ client.once("clientReady", async () => {
       const fromDate = from.toISOString().split("T")[0];
       const toDate = today.toISOString().split("T")[0];
 
-      // 20 τυχαίες μετοχές κάθε πρωί
+      // 20 τυχαίες εταιρίες κάθε φορά
       const sample = watchList.sort(() => 0.5 - Math.random()).slice(0, 20);
 
       for (const symbol of sample) {
@@ -82,19 +81,24 @@ client.once("clientReady", async () => {
 ${news.url}`
         );
 
-        // μικρή καθυστέρηση για να μη φάμε rate limit
+        // καθυστέρηση για rate limit
         await new Promise(r => setTimeout(r, 1500));
       }
 
     } catch (err) {
       console.log("Company news error:", err.message);
     }
-  });
+  }
+
+
+ // ================= SCHEDULED NEWS (κάθε 3 ώρες) =================
+cron.schedule("0 9,12,15,18,21 * * *", sendCompanyNews, {
+  timezone: "Europe/Athens"
+});
 
 
 
   // ================= WEEKLY EARNINGS =================
-  // Σάββατο πρωί
   cron.schedule("0 10 * * 6", async () => {
     try {
 
@@ -123,7 +127,6 @@ ${news.url}`
       console.log("Earnings Error:", err.message);
     }
   });
-
 
 
   // ================= MARKET CRASH SCANNER =================
