@@ -93,9 +93,10 @@ ${news.url}`
 
 
 // ================= BOT READY =================
-client.once("ready", async () => {
+client.once("clientReady", async (client) => {
 
-  console.log(`Bot Ready: ${client.user.tag}`);
+ console.log(`Bot Ready: ${client.user.tag}`);
+
 
   watchList = await getAllStocks();
   console.log("Total US stocks loaded:", watchList.length);
