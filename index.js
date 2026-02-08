@@ -6,6 +6,6 @@ const client = new Client({intents: [GatewayIntentBits.Guilds, GatewayIntentBits
 
 client.login(token);
 
-client.once("ready", () => {
+client.once("clientReady", () => {
     console.log(`Logged in as ${client.user.tag}`);
 });
