@@ -16,13 +16,12 @@ const ALERT_CHANNEL = process.env.ALERT_CHANNEL_ID;
 
 let watchList = [];
 let indexPointer = 0;
-
 const alertedToday = new Set();
-const sentNews = new Set();
 
 
 // ================= MARKET HOURS FILTER =================
 function isMarketTime() {
+
   const now = new Date();
 
   const greekTime = new Date(
@@ -35,7 +34,7 @@ function isMarketTime() {
   // μόνο Δευτέρα - Παρασκευή
   if (day === 0 || day === 6) return false;
 
-  // 11:00 -> 03:00 Ελλάδας
+  // 11:00 -> 03:00 Ελλάδας (pre + market + after)
   if (hour >= 11 || hour < 3) return true;
 
   return false;
@@ -53,6 +52,9 @@ client.once("clientReady", async () => {
 
   // ================= COMPANY NEWS FUNCTION =================
   async function sendCompanyNews() {
+
+    if (!watchList.length) return;
+
     try {
 
       const channel = await client.channels.fetch(NEWS_CHANNEL);
@@ -64,7 +66,12 @@ client.once("clientReady", async () => {
       const fromDate = from.toISOString().split("T")[0];
       const toDate = today.toISOString().split("T")[0];
 
-      const sample = watchList.sort(() => 0.5 - Math.random()).slice(0, 20);
+      // 5 εταιρίες κάθε run (για να μη μπλοκάρει το Finnhub)
+      const newsBatchSize = 5;
+      const sample = watchList.slice(indexPointer, indexPointer + newsBatchSize);
+
+      indexPointer += newsBatchSize;
+      if (indexPointer >= watchList.length) indexPointer = 0;
 
       for (const symbol of sample) {
 
@@ -76,17 +83,14 @@ client.once("clientReady", async () => {
 
         const news = res.data[0];
 
-        // ⬇️ Αποφυγή διπλών ειδήσεων
-        if (sentNews.has(news.url)) continue;
-        sentNews.add(news.url);
-
         await channel.send(
           `📈 **${symbol}**
 **${news.headline}**
 ${news.url}`
         );
 
-        await new Promise(r => setTimeout(r, 1500));
+        // ΠΟΛΥ σημαντικό για rate limit
+        await new Promise(r => setTimeout(r, 2500));
       }
 
     } catch (err) {
@@ -96,16 +100,8 @@ ${news.url}`
 
 
   // ================= SCHEDULED NEWS =================
+  // 9:00, 12:00, 15:00, 18:00, 21:00 Ελλάδας (ΚΑΘΕ ΜΕΡΑ)
   cron.schedule("0 9,12,15,18,21 * * *", sendCompanyNews, {
-    timezone: "Europe/Athens"
-  });
-
-
-  // ================= DAILY NEWS CACHE RESET =================
-  cron.schedule("0 5 * * *", () => {
-    sentNews.clear();
-    console.log("News cache cleared");
-  }, {
     timezone: "Europe/Athens"
   });
 
