@@ -31,7 +31,7 @@ client.once("clientReady", async () => {
 
 
   // ================= DAILY COMPANY NEWS =================
-  cron.schedule("*/2 * * * *", async () => {
+  cron.schedule("30 7 * * 1-5", async () => {
     try {
 
       const channel = await client.channels.fetch(NEWS_CHANNEL);
