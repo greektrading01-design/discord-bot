@@ -21,7 +21,6 @@ const alertedToday = new Set();
 
 // ================= MARKET HOURS FILTER =================
 function isMarketTime() {
-
   const now = new Date();
 
   const greekTime = new Date(
@@ -31,10 +30,10 @@ function isMarketTime() {
   const day = greekTime.getDay();
   const hour = greekTime.getHours();
 
-  // μόνο Δευτέρα - Παρασκευή
+  // Δευτέρα - Παρασκευή μόνο
   if (day === 0 || day === 6) return false;
 
-  // 11:00 -> 03:00 Ελλάδας (pre + market + after)
+  // 11:00 -> 03:00 Ελλάδας (premarket + market + after-hours)
   if (hour >= 11 || hour < 3) return true;
 
   return false;
@@ -52,9 +51,6 @@ client.once("clientReady", async () => {
 
   // ================= COMPANY NEWS FUNCTION =================
   async function sendCompanyNews() {
-
-    if (!watchList.length) return;
-
     try {
 
       const channel = await client.channels.fetch(NEWS_CHANNEL);
@@ -66,12 +62,8 @@ client.once("clientReady", async () => {
       const fromDate = from.toISOString().split("T")[0];
       const toDate = today.toISOString().split("T")[0];
 
-      // 5 εταιρίες κάθε run (για να μη μπλοκάρει το Finnhub)
-      const newsBatchSize = 5;
-      const sample = watchList.slice(indexPointer, indexPointer + newsBatchSize);
-
-      indexPointer += newsBatchSize;
-      if (indexPointer >= watchList.length) indexPointer = 0;
+      // 20 τυχαίες εταιρίες κάθε φορά
+      const sample = watchList.sort(() => 0.5 - Math.random()).slice(0, 20);
 
       for (const symbol of sample) {
 
@@ -89,8 +81,8 @@ client.once("clientReady", async () => {
 ${news.url}`
         );
 
-        // ΠΟΛΥ σημαντικό για rate limit
-        await new Promise(r => setTimeout(r, 2500));
+        // καθυστέρηση για rate limit
+        await new Promise(r => setTimeout(r, 1500));
       }
 
     } catch (err) {
@@ -100,8 +92,18 @@ ${news.url}`
 
 
   // ================= SCHEDULED NEWS =================
-  // 9:00, 12:00, 15:00, 18:00, 21:00 Ελλάδας (ΚΑΘΕ ΜΕΡΑ)
-  cron.schedule("0 9,12,15,18,21 * * *", sendCompanyNews, {
+  // 09:00 Ελλάδα
+  cron.schedule("0 9 * * 1-5", sendCompanyNews, {
+    timezone: "Europe/Athens"
+  });
+
+  // 14:00 Ελλάδα
+  cron.schedule("0 14 * * 1-5", sendCompanyNews, {
+    timezone: "Europe/Athens"
+  });
+
+  // 19:00 Ελλάδα
+  cron.schedule("0 19 * * 1-5", sendCompanyNews, {
     timezone: "Europe/Athens"
   });
 
