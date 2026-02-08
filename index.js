@@ -99,19 +99,8 @@ ${news.url}`
 
 
   // ================= SCHEDULED NEWS =================
-  // 09:00 Ελλάδα
-  cron.schedule("0 9 * * *", sendCompanyNews, {
-    timezone: "Europe/Athens"
-  });
+  cron.schedule("20 7,10,13,16,19 * * *", sendCompanyNews);
 
-  // 14:00 Ελλάδα
-  cron.schedule("0 14 * * *", sendCompanyNews, {
-    timezone: "Europe/Athens"
-  });
-
-  // 19:00 Ελλάδα
-  cron.schedule("/1 * * * *", sendCompanyNews, {
-    timezone: "Europe/Athens"
   });
 
 
