@@ -1,11 +1,103 @@
-const token = process.env.TOKEN?.trim();
-const {Client, GatewayIntentBits} = require("discord.js");
+const { Client, GatewayIntentBits } = require("discord.js");
+const axios = require("axios");
+const cron = require("node-cron");
 
-const client = new Client({intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages]});
-
-
-client.login(token);
-
-client.once("clientReady", () => {
-    console.log(`Logged in as ${client.user.tag}`);
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds]
 });
+
+const TOKEN = process.env.TOKEN;
+const FINNHUB_API = process.env.FINNHUB_API;
+
+const NEWS_CHANNEL = process.env.NEWS_CHANNEL_ID;
+const EARNINGS_CHANNEL = process.env.EARNINGS_CHANNEL_ID;
+const ALERT_CHANNEL = process.env.ALERT_CHANNEL_ID;
+
+client.once("ready", () => {
+  console.log(`Bot Ready: ${client.user.tag}`);
+});
+
+
+// ================= DAILY NEWS =================
+cron.schedule("0 10 * * 1-5", async () => {
+  try {
+    const res = await axios.get(
+      `https://finnhub.io/api/v1/news?category=general&token=${FINNHUB_API}`
+    );
+
+    const channel = await client.channels.fetch(NEWS_CHANNEL);
+
+    const articles = res.data.slice(0, 5);
+
+    for (const news of articles) {
+      await channel.send(
+        `📰 **${news.headline}**\n${news.summary}\n${news.url}`
+      );
+    }
+  } catch (err) {
+    console.log("News Error:", err.message);
+  }
+});
+
+
+// ================= WEEKLY EARNINGS =================
+cron.schedule("0 10 * * 6", async () => {
+  try {
+    const today = new Date();
+    const nextWeek = new Date(today);
+    nextWeek.setDate(today.getDate() + 7);
+
+    const from = today.toISOString().split("T")[0];
+    const to = nextWeek.toISOString().split("T")[0];
+
+    const res = await axios.get(
+      `https://finnhub.io/api/v1/calendar/earnings?from=${from}&to=${to}&token=${FINNHUB_API}`
+    );
+
+    const channel = await client.channels.fetch(EARNINGS_CHANNEL);
+
+    let message = "📅 **Next Week Earnings**\n\n";
+
+    res.data.earnings.slice(0, 20).forEach(e => {
+      message += `**${e.symbol}** — ${e.date}\n`;
+    });
+
+    channel.send(message);
+  } catch (err) {
+    console.log("Earnings Error:", err.message);
+  }
+});
+
+
+// ================= PRICE ALERTS =================
+const watchList = [
+  "AAPL","MSFT","NVDA","AMZN","GOOGL","META","TSLA",
+  "AMD","NFLX","INTC","JPM","BAC","KO","PEP"
+];
+
+setInterval(async () => {
+  try {
+    const channel = await client.channels.fetch(ALERT_CHANNEL);
+
+    for (const symbol of watchList) {
+      const res = await axios.get(
+        `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API}`
+      );
+
+      const price = res.data.c;
+      const prevClose = res.data.pc;
+
+      const change = ((price - prevClose) / prevClose) * 100;
+
+      if (change <= -7) {
+        await channel.send(
+          `🚨 **${symbol} crashed ${change.toFixed(2)}% today!**\nPrice: $${price}`
+        );
+      }
+    }
+  } catch (err) {
+    console.log("Alert Error:", err.message);
+  }
+}, 300000);
+
+client.login(TOKEN);
