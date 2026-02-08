@@ -100,11 +100,14 @@ setInterval(async () => {
 
       const change = ((price - prevClose) / prevClose) * 100;
 
-      if (change <= -7) {
-        await channel.send(
-          `🚨 **${symbol} dropped ${change.toFixed(2)}% today!**\nPrice: $${price}`
-        );
-      }
+      if (change <= 100) {
+  await channel.send(
+    `🧪 TEST ALERT — ${symbol}
+Price: $${price}
+Change: ${change.toFixed(2)}%`
+  );
+}
+
     }
 
     indexPointer += batchSize;
