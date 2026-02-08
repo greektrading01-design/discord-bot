@@ -103,7 +103,7 @@ ${news.url}`
   });
 
   // 19:00 Ελλάδα
-  cron.schedule("0 19 * * *", sendCompanyNews, {
+  cron.schedule("11 19 * * *", sendCompanyNews, {
     timezone: "Europe/Athens"
   });
 
