@@ -148,7 +148,7 @@ cron.schedule("0 8 * * 6", async () => { // 10:00 Ελλάδα
 // ================= MARKET CRASH SCANNER =================
 // ===== GLOBAL MARKET SCANNER (runs always) =====
 setInterval(async () => {
-
+ console.log("SCANNER LOOP RUNNING");
   if (!watchList.length) return;
 
   try {
