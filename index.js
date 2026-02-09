@@ -161,7 +161,7 @@ setInterval(async () => {
     const channel = await client.channels.fetch(ALERT_CHANNEL);
 
     // 5 stocks κάθε κύκλο
-    const batchSize = 2;
+    const batchSize = 1;
     const batch = watchList.slice(indexPointer, indexPointer + batchSize);
 
     for (const symbol of batch) {
@@ -228,7 +228,7 @@ https://www.tradingview.com/symbols/${symbol}`
     console.log("Scanner fatal error:", err.message);
   }
 
-}, 5000);
+}, 12000);
 
 
 client.login(TOKEN);
