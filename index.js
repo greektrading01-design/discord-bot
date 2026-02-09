@@ -146,6 +146,7 @@ cron.schedule("0 8 * * 6", async () => { // 10:00 Ελλάδα
 
 
 // ================= MARKET CRASH SCANNER =================
+// ===== GLOBAL MARKET SCANNER (runs always) =====
 setInterval(async () => {
 
   if (!watchList.length) return;
@@ -171,7 +172,7 @@ setInterval(async () => {
 
       const change = ((price - prevClose) / prevClose) * 100;
 
-      if (change <= 100 && !alertedToday.has(symbol)) {
+      if (change <= -1 && !alertedToday.has(symbol)) {
 
         alertedToday.add(symbol);
 
@@ -190,6 +191,7 @@ Previous Close: $${prevClose}`
     console.log("Scanner error:", err.message);
   }
 
-}, 5000);
+}, 5000); // κάθε 15 δευτερόλεπτα
+
 
 client.login(TOKEN);
