@@ -155,7 +155,7 @@ setInterval(async () => {
 
     const channel = await client.channels.fetch(ALERT_CHANNEL);
 
-    const batchSize = 4;
+    const batchSize = 2;
     const batch = watchList.slice(indexPointer, indexPointer + batchSize);
 
     for (const symbol of batch) {
@@ -190,6 +190,6 @@ Previous Close: $${prevClose}`
     console.log("Scanner error:", err.message);
   }
 
-}, 180000);
+}, 5000);
 
 client.login(TOKEN);
