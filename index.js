@@ -171,7 +171,7 @@ setInterval(async () => {
 
       const change = ((price - prevClose) / prevClose) * 100;
 
-      if (change <= -7 && !alertedToday.has(symbol)) {
+      if (change <= 100 && !alertedToday.has(symbol)) {
 
         alertedToday.add(symbol);
 
