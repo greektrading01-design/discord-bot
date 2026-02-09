@@ -145,57 +145,90 @@ cron.schedule("0 8 * * 6", async () => { // 10:00 Ελλάδα
 });
 
 
-// ================= MARKET CRASH SCANNER =================
-// ===== GLOBAL MARKET SCANNER (runs always) =====
+// ================= REAL MARKET SCANNER (POLYGON) =================
+
+const POLYGON_API = process.env.POLYGON_API;
+
 setInterval(async () => {
 
   if (!watchList.length) return;
+  if (!isMarketTime()) return;
+
+  console.log("SCANNER LOOP RUNNING");
 
   try {
 
     const channel = await client.channels.fetch(ALERT_CHANNEL);
 
+    // 5 stocks κάθε κύκλο
     const batchSize = 2;
     const batch = watchList.slice(indexPointer, indexPointer + batchSize);
 
     for (const symbol of batch) {
 
-      const res = await axios.get(
-        `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API}`
-      );
+      try {
 
-      const price = res.data.c;
-      const prevClose = res.data.pc;
+        // Polygon real daily data
+        const url = `https://api.polygon.io/v2/aggs/ticker/${symbol}/prev?adjusted=true&apiKey=${POLYGON_API}`;
+        const res = await axios.get(url);
 
-      if (!price || !prevClose || price === 0 || prevClose === 0) {
-  console.log("NO DATA:", symbol);
-  continue;
-}
+        if (!res.data || !res.data.results || !res.data.results.length) {
+          console.log(`NO DATA: ${symbol}`);
+          continue;
+        }
 
+        const day = res.data.results[0];
 
-      const change = ((price - prevClose) / prevClose) * 100;
-      console.log(symbol, "change:", change.toFixed(2));
- 
-      if (change <= -1) {
+        const close = day.c;   // last close
+        const open = day.o;    // open
+        const high = day.h;
+        const low = day.l;
 
-        alertedToday.add(symbol);
+        if (!close || !open) {
+          console.log(`BAD DATA: ${symbol}`);
+          continue;
+        }
 
-        await channel.send(
-          `🚨 **${symbol} crashed ${change.toFixed(2)}% today!**
-Price: $${price}
-Previous Close: $${prevClose}`
-        );
+        // ημερήσια πτώση
+        const change = ((close - open) / open) * 100;
+
+        console.log(`${symbol} change: ${change.toFixed(2)}%`);
+
+        if (change <= -1 && !alertedToday.has(symbol)) {
+
+          alertedToday.add(symbol);
+
+          await channel.send(
+`🚨 **${symbol} CRASH ALERT**
+
+Daily Change: ${change.toFixed(2)}%
+Open: $${open}
+Close: $${close}
+Low: $${low}
+High: $${high}
+
+https://www.tradingview.com/symbols/${symbol}`
+          );
+
+        }
+
+        // anti-rate limit
+        await new Promise(r => setTimeout(r, 1200));
+
+      } catch (err) {
+        console.log(`Polygon error ${symbol}:`, err.response?.status);
       }
+
     }
 
     indexPointer += batchSize;
     if (indexPointer >= watchList.length) indexPointer = 0;
 
   } catch (err) {
-    console.log("Scanner error:", err.message);
+    console.log("Scanner fatal error:", err.message);
   }
 
-}, 5000); // κάθε 15 δευτερόλεπτα
+}, 5000);
 
 
 client.login(TOKEN);
