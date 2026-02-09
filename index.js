@@ -150,7 +150,6 @@ cron.schedule("0 8 * * 6", async () => { // 10:00 Ελλάδα
 setInterval(async () => {
 
   if (!watchList.length) return;
-  if (!isMarketTime()) return;
 
   try {
 
