@@ -170,8 +170,9 @@ setInterval(async () => {
       if (!price || !prevClose) continue;
 
       const change = ((price - prevClose) / prevClose) * 100;
-
-      if (change <= -1 && !alertedToday.has(symbol)) {
+      console.log(symbol, "change:", change.toFixed(2));
+ 
+      if (change <= -1) {
 
         alertedToday.add(symbol);
 
