@@ -148,7 +148,7 @@ cron.schedule("0 8 * * 6", async () => { // 10:00 Ελλάδα
 // ================= MARKET CRASH SCANNER =================
 // ===== GLOBAL MARKET SCANNER (runs always) =====
 setInterval(async () => {
- console.log("SCANNER LOOP RUNNING");
+
   if (!watchList.length) return;
 
   try {
@@ -167,7 +167,11 @@ setInterval(async () => {
       const price = res.data.c;
       const prevClose = res.data.pc;
 
-      if (!price || !prevClose) continue;
+      if (!price || !prevClose || price === 0 || prevClose === 0) {
+  console.log("NO DATA:", symbol);
+  continue;
+}
+
 
       const change = ((price - prevClose) / prevClose) * 100;
       console.log(symbol, "change:", change.toFixed(2));
