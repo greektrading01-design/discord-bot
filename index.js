@@ -12,7 +12,11 @@ const FINNHUB_API = process.env.FINNHUB_API;
 const NEWS_CHANNEL_ID = process.env.NEWS_CHANNEL_ID;
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ]
 });
 
 let watchList = [];
