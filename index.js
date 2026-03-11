@@ -115,3 +115,8 @@ cron.schedule("0 7,10,13,16,19 * * *", sendCompanyNews, {
 
 console.log("Starting Discord login...");
 client.login(TOKEN);
+console.log("TOKEN:", process.env.TOKEN ? "OK" : "MISSING");
+
+client.login(process.env.TOKEN)
+  .then(() => console.log("Discord login success"))
+  .catch(err => console.error("Discord login error:", err));
