@@ -50,7 +50,7 @@ function saveSentNews() {
 
 
 // ================= BOT READY =================
-client.once("clientReady", async () => {
+client.once("ready", async () => {
 
   console.log(`Bot Ready: ${client.user.tag}`);
 
