@@ -3,7 +3,6 @@ const fs = require("fs");
 async function getAllStocks() {
   try {
 
-    // ===== Load S&P 500 from CSV =====
     const raw = fs.readFileSync("./sp500.csv", "utf8");
 
     const lines = raw.split("\n").slice(1);
@@ -11,8 +10,6 @@ async function getAllStocks() {
       .map(line => line.split(",")[0])
       .filter(symbol => symbol && symbol.length <= 5);
 
-
-    // ===== Load NASDAQ100 =====
     const nasdaq = JSON.parse(
       fs.readFileSync("./nasdaq100.json", "utf8")
     );
@@ -22,7 +19,7 @@ async function getAllStocks() {
     return combined;
 
   } catch (err) {
-    console.log("Stock list local load error:", err.message);
+    console.log("Stock list load error:", err.message);
     return [];
   }
 }
