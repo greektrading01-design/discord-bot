@@ -3,11 +3,7 @@ name: Discord News Bot
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 7 * * *"
-    - cron: "0 10 * * *"
-    - cron: "0 13 * * *"
-    - cron: "0 16 * * *"
-    - cron: "0 19 * * *"
+  - cron: "*/5 * * * *"
 
 jobs:
   run-bot:
