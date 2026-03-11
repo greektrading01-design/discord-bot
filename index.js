@@ -1,9 +1,5 @@
-const express = require("express");
-const app = express();
-
 const { Client, GatewayIntentBits } = require("discord.js");
 const axios = require("axios");
-const cron = require("node-cron");
 const fs = require("fs");
 const getAllStocks = require("./stocks");
 
@@ -12,27 +8,11 @@ const FINNHUB_API = process.env.FINNHUB_API;
 const NEWS_CHANNEL_ID = process.env.NEWS_CHANNEL_ID;
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
-  ]
+  intents: [GatewayIntentBits.Guilds]
 });
 
 let watchList = [];
 let sentNews = new Set();
-
-
-// ================= WEB SERVER (required by Render) =================
-app.get("/", (req, res) => {
-  res.send("Bot running");
-});
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log("Web server running on port " + PORT);
-});
 
 
 // ================= LOAD SENT NEWS =================
@@ -50,22 +30,13 @@ function saveSentNews() {
 }
 
 
-// ================= DISCORD READY =================
-client.once("ready", async () => {
-
-  console.log(`Bot Ready: ${client.user.tag}`);
-
-  watchList = await getAllStocks();
-  console.log("Total stocks loaded:", watchList.length);
-
-  loadSentNews();
-});
-
-
 // ================= SEND NEWS =================
 async function sendCompanyNews() {
 
-  if (!watchList.length) return;
+  if (!watchList.length) {
+    console.log("Watchlist empty");
+    return;
+  }
 
   const channel = await client.channels.fetch(NEWS_CHANNEL_ID);
 
@@ -104,23 +75,32 @@ ${news.url}`
 
       await new Promise(r => setTimeout(r, 1500));
 
-    } catch {
+    } catch (err) {
       console.log("Skip", symbol);
     }
   }
 }
 
 
-// ================= SCHEDULE =================
-cron.schedule("0 7,10,13,16,19 * * *", sendCompanyNews, {
-  timezone: "UTC"
+// ================= BOT READY =================
+client.once("ready", async () => {
+
+  console.log(`Bot Ready: ${client.user.tag}`);
+
+  watchList = await getAllStocks();
+  console.log("Total stocks loaded:", watchList.length);
+
+  loadSentNews();
+
+  console.log("Running news job...");
+  await sendCompanyNews();
+
+  console.log("Job finished");
+  process.exit(0);
+
 });
 
 
-// ================= DISCORD LOGIN =================
+// ================= LOGIN =================
 console.log("Starting Discord login...");
-console.log("TOKEN:", TOKEN ? "OK" : "MISSING");
-
-client.login(TOKEN)
-  .then(() => console.log("Discord login success"))
-  .catch(err => console.error("Discord login error:", err));
+client.login(TOKEN).catch(console.error);
