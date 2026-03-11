@@ -1,9 +1,9 @@
 name: Discord News Bot
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/5 * * * *"   # κάθε 5 λεπτά
+  workflow_dispatch:
 
 jobs:
   run-bot:
