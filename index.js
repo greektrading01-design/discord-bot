@@ -23,7 +23,7 @@ let watchList = [];
 let sentNews = new Set();
 
 
-// ================= WEB SERVER (Render requirement) =================
+// ================= WEB SERVER (required by Render) =================
 app.get("/", (req, res) => {
   res.send("Bot running");
 });
@@ -104,7 +104,7 @@ ${news.url}`
 
       await new Promise(r => setTimeout(r, 1500));
 
-    } catch (err) {
+    } catch {
       console.log("Skip", symbol);
     }
   }
@@ -117,10 +117,10 @@ cron.schedule("0 7,10,13,16,19 * * *", sendCompanyNews, {
 });
 
 
+// ================= DISCORD LOGIN =================
 console.log("Starting Discord login...");
-client.login(TOKEN).catch(console.error);
-console.log("TOKEN:", process.env.TOKEN ? "OK" : "MISSING");
+console.log("TOKEN:", TOKEN ? "OK" : "MISSING");
 
-client.login(process.env.TOKEN)
+client.login(TOKEN)
   .then(() => console.log("Discord login success"))
   .catch(err => console.error("Discord login error:", err));
